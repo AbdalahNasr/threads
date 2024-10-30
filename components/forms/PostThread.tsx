@@ -20,6 +20,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ThreadValidation } from '@/lib/validations/thread';
 import { create } from 'domain';
 import { createThread } from '@/lib/actions/thread.action';
+import { useOrganization } from '@clerk/nextjs';
 
 interface Props {
   user: {
@@ -28,7 +29,7 @@ interface Props {
     username: string;
     name: string;
     bio: string;
-    image: string;
+    image: string; 
   }
   btnTitle: string
 }
@@ -40,7 +41,9 @@ interface Props {
 function PostThread({userId}:{userId  : string}) {
     const router = useRouter();
     const pathname = usePathname(); 
-    
+    const {organization} = useOrganization();  
+      // Log the organization ID
+  console.log("Organization ID:", organization ? organization.id : null);
     const form = useForm({
       resolver: zodResolver(ThreadValidation),
       defaultValues: {
@@ -48,15 +51,24 @@ function PostThread({userId}:{userId  : string}) {
     accountId: userId ,
 }
 });
-const onSubmit= async(values: z.infer<typeof ThreadValidation>)=>{
-  await createThread({
-    text: values.thread,
-    author:userId,
-    communityId:null
-    ,path:pathname
+const onSubmit= async(values: z.infer<typeof ThreadValidation>) => {
 
-  });
-  router.push("/")
+  { 
+    
+    console.log('ORG :', {organization } )};
+
+    await createThread({
+      text: values.thread,
+      author:userId,
+      communityId: organization ? organization.id : null
+      ,path:pathname
+    });
+    
+   { console.log({organization})};
+   { console.log('user Id :', userId)};
+    
+   { console.log('thread :', {createThread} )};
+    router.push("/")
 }
     return (
             <Form {...form}>
@@ -66,9 +78,9 @@ const onSubmit= async(values: z.infer<typeof ThreadValidation>)=>{
           control={form.control}
           name="thread"
           render={({ field }) => (
-            <FormItem className=' flex flex-col w-full gap-3'>
+            <FormItem className=' flex flex-col w-full gap-3'> 
               <FormLabel className='text-base-semibold text-light-2'>
-                content
+                content 
 
               </FormLabel>
               <FormControl className=' no-focus border border-dark-4 bg-dark-3 text-light-1'

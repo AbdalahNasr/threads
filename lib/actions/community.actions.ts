@@ -8,7 +8,6 @@ import User from "../models/user.model";
 
 import { connectToDB } from "../mongoose";
 
-
 export async function createCommunity(
   id: string,
   name: string,
@@ -18,7 +17,10 @@ export async function createCommunity(
   createdById: string // Change the parameter name to reflect it's an id
 ) {
   try {
-    connectToDB();
+    
+    connectToDB(); 
+   { console.log("بدء إنشاء المجتمع...")};
+    console.log("بدء إنشاء المجتمع...");
 
     // Find the user with the provided unique id
     const user = await User.findOne({ id: createdById });
@@ -302,4 +304,4 @@ export async function deleteCommunity(communityId: string) {
     console.error("Error deleting community: ", error);
     throw error;
   }
-}   
+}

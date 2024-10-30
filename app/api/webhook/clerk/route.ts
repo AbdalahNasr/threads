@@ -10,13 +10,13 @@ import { headers } from "next/headers";
 import { IncomingHttpHeaders } from "http";
 
 import { NextResponse } from "next/server";
-import { addMemberToCommunity,
-    createCommunity,
-    deleteCommunity,
-    removeUserFromCommunity,
-    updateCommunityInfo,
-  
- } from "@/lib/actions/community.actions";
+import {
+  addMemberToCommunity,
+  createCommunity,
+  deleteCommunity,
+  removeUserFromCommunity,
+  updateCommunityInfo,
+} from "@/lib/actions/community.actions";
 
 // Resource: https://clerk.com/docs/integration/webhooks#supported-events
 // Above document lists the supported events
@@ -79,7 +79,6 @@ export const POST = async (request: Request) => {
         "org bio",
         created_by
       );
-
       return NextResponse.json({ message: "User created" }, { status: 201 });
     } catch (err) {
       console.log(err);
