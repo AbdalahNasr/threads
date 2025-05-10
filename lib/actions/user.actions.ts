@@ -1,6 +1,7 @@
 "use server";
 
 import { FilterQuery, SortOrder } from "mongoose";
+import mongoose from "mongoose";
 import { revalidatePath } from "next/cache";
 
 import Community from "../models/community.model";
@@ -9,9 +10,116 @@ import User from "../models/user.model";
 
 import { connectToDB } from "../mongoose";
 
-export async function fetchUser(userId: string) {
+interface SuggestedUser {
+  id: string;
+  name: string;
+  username: string;
+  image: string;
+}
+
+export async function getSuggestedUsers(currentUserId: string): Promise<SuggestedUser[]> {
   try {
-    connectToDB();
+    console.log("Getting suggested users for:", currentUserId);
+    await connectToDB();
+
+    // Find the current user to get their following list
+    const currentUser = await User.findOne({ id: currentUserId })
+      .select('_id following')
+      .exec();
+    
+    if (!currentUser) {
+      console.error("Current user not found in database");
+      return [];
+    }
+
+    console.log("Current user found:", currentUser._id);
+    
+    // Create a query to find users that current user is not following
+    // and who are not the current user
+    const suggestedUsersQuery = User.find({
+      _id: { $ne: currentUser._id },
+    });
+
+    // If user is following others, exclude them from suggestions
+    if (currentUser.following && currentUser.following.length > 0) {
+      suggestedUsersQuery.where('_id').nin(currentUser.following);
+    }
+
+    // Limit to 5 suggestions and select only needed fields
+    const suggestedUsers = await suggestedUsersQuery
+      .select('id name username image')
+      .limit(5)
+      .exec();
+
+    console.log(`Found ${suggestedUsers.length} suggested users`);
+
+    // Map to the expected format with explicit type
+    return suggestedUsers.map((user): SuggestedUser => ({
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      image: user.image || "/placeholder-user.jpg"
+    }));
+  } catch (error) {
+    console.error("Error fetching suggested users:", error);
+    return []; // Return empty array instead of throwing to avoid breaking UI
+  }
+}
+
+export async function sendFriendRequest(fromUserId: string, toUserId: string): Promise<{ success: boolean }> {
+  try {
+    await connectToDB();
+
+    // Find both users
+    const fromUser = await User.findOne({ id: fromUserId });
+    const toUser = await User.findOne({ id: toUserId });
+    
+    if (!fromUser || !toUser) {
+      throw new Error("One or both users not found");
+    }
+
+    // Check if request already exists
+    const alreadySent = fromUser.sentRequests?.some((id: mongoose.Types.ObjectId) => 
+      id.toString() === toUser._id.toString()
+    );
+    const alreadyFriends = fromUser.following?.some((id: mongoose.Types.ObjectId) => 
+      id.toString() === toUser._id.toString()
+    );
+    
+    if (alreadySent) {
+      throw new Error("Friend request already sent");
+    }
+    
+    if (alreadyFriends) {
+      throw new Error("Already following this user");
+    }
+
+    // Update the sender's sentRequests
+    await User.findByIdAndUpdate(
+      fromUser._id,
+      { $addToSet: { sentRequests: toUser._id } }
+    );
+
+    // Update the receiver's receivedRequests
+    await User.findByIdAndUpdate(
+      toUser._id,
+      { $addToSet: { receivedRequests: fromUser._id } }
+    );
+
+    // Revalidate paths
+    revalidatePath(`/profile/${toUserId}`);
+    revalidatePath(`/profile/${fromUserId}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error sending friend request:", error);
+    throw error;
+  }
+}
+
+export async function fetchUser(userId: string): Promise<any> {
+  try {
+    await connectToDB();
 
     return await User.findOne({ id: userId }).populate({
       path: "communities",
@@ -22,7 +130,7 @@ export async function fetchUser(userId: string) {
   }
 }
 
-interface Params {
+interface UpdateUserParams {
   userId: string;
   username: string;
   name: string;
@@ -38,9 +146,9 @@ export async function updateUser({
   path,
   username,
   image,
-}: Params): Promise<void> {
+}: UpdateUserParams): Promise<void> {
   try {
-    connectToDB();
+    await connectToDB();
 
     await User.findOneAndUpdate(
       { id: userId },
@@ -62,7 +170,7 @@ export async function updateUser({
   }
 }
 
-export async function fetchUserPost(userId: string) {
+export async function fetchUserPost(userId: string): Promise<any> {
   try {
     connectToDB();
 
@@ -107,7 +215,7 @@ export async function fetchUsers({
   pageNumber?: number;
   pageSize?: number;
   sortBy?: SortOrder;
-}) {
+}): Promise<{ users: any[]; isNext: boolean }> {
   try {
     connectToDB();
 
@@ -153,7 +261,7 @@ export async function fetchUsers({
   }
 }
 
-export async function getActivity(userId: string) {
+export async function getActivity(userId: string): Promise<any[]> {
   try {
     connectToDB();
 
@@ -161,7 +269,7 @@ export async function getActivity(userId: string) {
     const userThreads = await Thread.find({ author: userId });
 
     // Collect all the child thread ids (replies) from the 'children' field of each user thread
-    const childThreadIds = userThreads.reduce((acc, userThread) => {
+    const childThreadIds = userThreads.reduce((acc: any[], userThread) => {
       return acc.concat(userThread.children);
     }, []);
 

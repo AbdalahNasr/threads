@@ -1,0 +1,33 @@
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+// Define protected routes
+const isProtectedApiRoute = createRouteMatcher([
+    "/api/orgs(.*)",
+    "/api/protected(.*)"
+]);
+
+// Define public routes that don't require authentication
+const isPublicApiRoute = createRouteMatcher([
+    "/api/public(.*)",
+    "/api/webhook(.*)"
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+    // Skip authentication for public API routes
+    if (isPublicApiRoute(req)) {
+        return;
+    }
+
+    // Require authentication for protected API routes
+    if (isProtectedApiRoute(req)) {
+        await auth.protect();
+    }
+});
+
+export const config = {
+    matcher: [
+        // Include all routes except Next.js static files and specific assets
+        "/((?!_next|_static|favicon.ico).*)",
+    ],
+};
+console.log("Middleware loaded successfully");

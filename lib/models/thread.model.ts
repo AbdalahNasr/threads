@@ -29,8 +29,15 @@ children:[
         ref:"Thread"
 
     }
-]
-
+],
+likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+}],
+reposts: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+}]
 })
 
 const Thread =  mongoose.models.Thread || mongoose.model('Thread', threadSchema)

@@ -6,22 +6,48 @@ const userSchema = new mongoose.Schema({
     name:{type:String,required:true},
     image:String,
     bio:String,
-threads:[
-    {
-type:mongoose.Schema.Types.ObjectId,
-ref:'Thread'
-    }
-],
-onboarded:{
-    type:Boolean,
-    default:false
-},
-communities:[
-    {
-        type:mongoose.Schema.Types.ObjectId,
-        ref:'Community'
-    }
-]
+    threads:[
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:'Thread'
+        }
+    ],
+    onboarded:{
+        type:Boolean,
+        default:false
+    },
+    communities:[
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:'Community'
+        }
+    ],
+    // Fields for social connections
+    following: [
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:'User'
+        }
+    ],
+    followers: [
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:'User'
+        }
+    ],
+    // Friend request fields
+    sentRequests: [
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:'User'
+        }
+    ],
+    receivedRequests: [
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:'User'
+        }
+    ]
 })
 
 const User =  mongoose.models.User || mongoose.model('User', userSchema)
