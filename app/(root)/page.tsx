@@ -1,13 +1,13 @@
-import { auth } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 
-import ThreadCard from "@/components/cards/ThreadCard";
 import CommunityCard from "@/components/cards/CommunityCard";
 import Pagination from "@/components/shared/Pagination";
 
 import { fetchPosts } from "@/lib/actions/thread.action";
 import { fetchUser } from "@/lib/actions/user.actions";
 import { fetchSuggestedCommunities } from "@/lib/actions/community.actions";
+import { ThreadList } from "@/components/ThreadList";
 
 // Define Community interface
 interface Community {
@@ -25,15 +25,14 @@ export default async function Home({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) {
-  const { userId } = auth();
+  const user = await currentUser();
+  if (!user) return redirect("/sign-in");
 
-  if (!userId) return redirect("/sign-in");
-
-  const user = await fetchUser(userId);
-  if (!user?.onboarded) redirect("/onboarding");
+  const userInfo = await fetchUser(user.id);
+  if (!userInfo?.onboarded) redirect("/onboarding");
 
   // Fetch posts
-  const postsResult = await fetchPosts(
+  const result = await fetchPosts(
     searchParams.page ? +searchParams.page : 1,
     30
   );
@@ -52,32 +51,21 @@ export default async function Home({
       <h1 className="head-text text-left">Home</h1>
 
       <section className="mt-9 flex flex-col gap-10">
-        {postsResult.posts.length === 0 ? (
+        {result.posts.length === 0 ? (
           <p className="no-result">No threads found</p>
         ) : (
           <>
-            {postsResult.posts.map((post) => (
-              <ThreadCard
-                key={post._id}
-                id={post._id}
-                currentUserId={user.id}
-                parentId={post.parentId}
-                content={post.text}
-                author={post.author}
-                community={post.community}
-                createdAt={post.createdAt}
-                comments={post.children}
-              />
-            ))}
+            {/* Client-side thread list component that uses the context */}
+            <ThreadList initialPosts={result.posts} />
+
+            <Pagination
+              path="/"
+              pageNumber={searchParams?.page ? +searchParams.page : 1}
+              isNext={result.isNext}
+            />
           </>
         )}
       </section>
-
-      <Pagination
-        path="/"
-        pageNumber={searchParams?.page ? +searchParams.page : 1}
-        isNext={postsResult.isNext}
-      />
 
       <section className="mt-9">
         <h2 className="text-heading4-medium text-light-1">

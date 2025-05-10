@@ -42,3 +42,4 @@ next-env.d.ts
 # Additional files to ignore (optional)
 *.log              # Ignore all log files
 .qodo
+.env

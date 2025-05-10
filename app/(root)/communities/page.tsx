@@ -110,16 +110,16 @@ async function CommunitiesPage({ searchParams }: CommunitiesPageProps) {
   );
 
   return (
-    <section className="flex flex-col gap-10">
-      <div className="flex items-center justify-between">
+    <section className="flex flex-col gap-10 ">
+      <div className="flex items-center justify-between mt-4">
         <h1 className="text-heading2-bold text-light-1">Communities</h1>
         <div className="flex gap-2">
           {typeof fullClerkSync === "function" && (
             <Link
-              href={`/communities?sync=true&t=${timestamp}`}
+              href={`/communities?sync=true&t=${timestamp}`} 
               prefetch={false}
             >
-              <Button variant="outline" className="mr-2">
+              <Button variant="outline" className="mr-2 text-light-1">
                 Sync
               </Button>
             </Link>
@@ -128,7 +128,7 @@ async function CommunitiesPage({ searchParams }: CommunitiesPageProps) {
             href={`/communities?refresh=true&t=${timestamp}`}
             prefetch={false}
           >
-            <Button variant="outline" className="mr-2">
+            <Button variant="outline" className="mr-2 text-light-1">
               Refresh
             </Button>
           </Link>
@@ -158,7 +158,7 @@ async function CommunitiesPage({ searchParams }: CommunitiesPageProps) {
             className="search-input peer w-full bg-dark-3 p-4 pl-14 pr-4 rounded-lg outline-none border-none text-light-1"
           />
           <svg
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-1"
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-light-1"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -191,7 +191,7 @@ async function CommunitiesPage({ searchParams }: CommunitiesPageProps) {
             ))}
           </div>
         ) : (
-          <div className="text-light-3 text-center py-6 bg-dark-3 rounded-lg">
+          <div className="text-light-1 text-center py-6 bg-dark-3 rounded-lg">
             You haven't joined any communities yet.
             <Link href="/create-organization" className="text-primary-500 ml-1">
               Create one
@@ -208,7 +208,7 @@ async function CommunitiesPage({ searchParams }: CommunitiesPageProps) {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {!discoveredCommunities.length ? (
-            <div className="text-light-3 text-center col-span-full py-6 bg-dark-3 rounded-lg">
+            <div className="text-light-1 text-center col-span-full py-6 bg-dark-3 rounded-lg">
               {q
                 ? "No communities found matching your search."
                 : allCommunities.length > 0

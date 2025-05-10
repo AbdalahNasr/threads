@@ -36,6 +36,7 @@ interface Props {
   isComment?: boolean;
   likes?: string[];
   reposts?: string[];
+  isOptimistic?: boolean; // New prop to indicate if this is an optimistic update
 }
 
 const ThreadCard = ({
@@ -50,6 +51,7 @@ const ThreadCard = ({
   isComment,
   likes = [],
   reposts = [],
+  isOptimistic = false,
 }: Props) => {
   const pathname = usePathname();
   const [showCommentForm, setShowCommentForm] = useState(false);
@@ -68,15 +70,16 @@ const ThreadCard = ({
       e.preventDefault();
       e.stopPropagation();
 
+      // Optimistically update UI state
+      setInteractionState((prev) => ({
+        ...prev,
+        isLiked: !prev.isLiked,
+        likeCount: prev.isLiked ? prev.likeCount - 1 : prev.likeCount + 1,
+      }));
+
       try {
         const result = await likeThread(id, currentUserId, pathname);
-        if (result.success) {
-          setInteractionState((prev) => ({
-            ...prev,
-            isLiked: !prev.isLiked,
-            likeCount: prev.isLiked ? prev.likeCount - 1 : prev.likeCount + 1,
-          }));
-        } else {
+        if (!result.success) {
           console.error("Error liking thread:", result.error);
           // Reset to previous state if there was an error
           setInteractionState((prev) => ({
@@ -103,22 +106,37 @@ const ThreadCard = ({
       e.preventDefault();
       e.stopPropagation();
 
+      // Optimistically update UI state
+      setInteractionState((prev) => ({
+        ...prev,
+        isReposted: !prev.isReposted,
+        repostCount: prev.isReposted
+          ? prev.repostCount - 1
+          : prev.repostCount + 1,
+      }));
+
       try {
         const result = await repostThread(id, currentUserId, pathname);
-        if (result.success) {
+        if (!result.success) {
+          console.error("Error reposting thread:", result.error);
+          // Reset to previous state if there was an error
           setInteractionState((prev) => ({
             ...prev,
-            isReposted: !prev.isReposted,
-            repostCount: prev.isReposted
-              ? prev.repostCount - 1
-              : prev.repostCount + 1,
+            isReposted: reposts.includes(currentUserId),
+            repostCount: reposts.length,
           }));
         }
       } catch (error) {
         console.error("Error reposting thread:", error);
+        // Reset to previous state if there was an error
+        setInteractionState((prev) => ({
+          ...prev,
+          isReposted: reposts.includes(currentUserId),
+          repostCount: reposts.length,
+        }));
       }
     },
-    [id, currentUserId, pathname]
+    [id, currentUserId, pathname, reposts]
   );
 
   const handleShare = useCallback(
@@ -150,7 +168,7 @@ const ThreadCard = ({
     <article
       className={`flex w-full flex-col rounded-xl ${
         isComment ? "px-0 xs:px-7" : "bg-dark-2 p-7"
-      }`}
+      } ${isOptimistic ? "opacity-70" : ""}`}
     >
       <div className="flex flex-start justify-between">
         <div className="flex w-full flex-1 flex-row gap-4">
@@ -247,7 +265,7 @@ const ThreadCard = ({
                   currentUserImg={author.image}
                 />
               )}
-              {isComment && comments.length > 0 && (
+              {isComment && comments.length > 0 && !isOptimistic && (
                 <Link href={`/thread/${id}`}>
                   <p className="mt-1 text-subtle-medium text-gray-1">
                     {comments.length} repl{comments.length > 1 ? "ies" : "y"}
@@ -258,6 +276,14 @@ const ThreadCard = ({
           </div>
         </div>
       </div>
+
+      {/* Show optimistic indicator if this is an optimistic update */}
+      {isOptimistic && (
+        <div className="mt-3 text-subtle-medium text-gray-1 flex items-center">
+          <div className="animate-pulse bg-primary-500/30 rounded-full h-2 w-2 mr-2"></div>
+          Posting...
+        </div>
+      )}
       {!isComment && community && (
         <Link
           href={`/communities/${community.id}`}

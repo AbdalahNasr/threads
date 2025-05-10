@@ -25,70 +25,90 @@ interface ThreadData {
   community?: mongoose.Types.ObjectId; // Add optional community property
 }
 
+interface CreateThreadParams {
+  text: string;
+  userId: string;
+  communityId?: mongoose.Types.ObjectId | null;
+}
+
 /**
  * Creates a new thread post
  */
-export async function createThread({ 
-  text, 
-  author, 
-  communityId, 
-  image = "", 
-  path 
-}: Params) {
+export async function createThread(params: CreateThreadParams) {
   try {
-    connectToDB();
-
-    // Find the author in the database
-    const userObjectId = await User.findOne({ id: author }, { _id: 1 });
-
-    if (!userObjectId) {
-      throw new Error("User not found");
-    }
-
-    // Prepare new thread data with proper typing
-    const threadData: ThreadData = {
-      text,
-      author: userObjectId._id,
-      image, 
-      parentId: null, // Not a comment/reply
-      children: [],
-    };
-
-    // If community is provided, associate the thread with it
-    let communityIdToUse: mongoose.Types.ObjectId | null = null;
+    const startTime = performance.now();
     
-    if (communityId && communityId.trim() !== "") {
-      const communityObjectId = await Community.findOne({ id: communityId }, { _id: 1 });
+    // Connect to DB
+    await connectToDB();
+
+    console.log(`Attempting to find user with id: ${params.userId}`);
+
+    // Find user with more detailed error handling
+    const user = await User.findOne({ id: params.userId });
+    
+    if (!user) {
+      // Log all users for debugging
+      const allUsers = await User.find({}, 'id name');
+      console.log('Available users in DB:', allUsers);
       
-      if (communityObjectId) {
-        communityIdToUse = communityObjectId._id;
-        // Now TypeScript knows this property can exist on threadData
-        threadData.community = communityObjectId._id;
-      }
+      throw new Error(`User not found with id: ${params.userId}`);
     }
 
-    // Create the thread
-    const createdThread = await Thread.create(threadData);
-
-    // Update the author's threads
-    await User.findByIdAndUpdate(userObjectId._id, {
-      $push: { threads: createdThread._id },
+    console.log(`Found user:`, {
+      userId: user.id,
+      _id: user._id,
+      name: user.name
     });
 
-    // If this thread belongs to a community, update the community's threads too
-    if (communityIdToUse) {
-      await Community.findByIdAndUpdate(communityIdToUse, {
-        $push: { threads: createdThread._id },
-      });
+    // Create thread with all required fields
+    const threadData = {
+      text: params.text,
+      author: user._id,
+      parentId: null,
+      children: [],
+      createdAt: new Date(),
+      community: params.communityId || null
+    };
+
+    console.log('Creating thread with data:', threadData);
+
+    const createdThread = await Thread.create(threadData);
+
+    // Update user's threads array with error handling
+    const updateResult = await User.findByIdAndUpdate(
+      user._id,
+      { $push: { threads: createdThread._id } },
+      { new: true }
+    );
+
+    if (!updateResult) {
+      throw new Error('Failed to update user with new thread');
     }
 
-    // Revalidate the path to update the UI
-    revalidatePath(path);
+    const endTime = performance.now();
+    console.log({
+      operation: 'Thread creation complete',
+      timeTaken: `${(endTime - startTime).toFixed(2)}ms`,
+      threadId: createdThread._id
+    });
 
-    return createdThread;
+    revalidatePath('/');
+    return {
+      success: true,
+      thread: createdThread
+    };
+    
   } catch (error: any) {
-    console.error("Error creating thread:", error);
-    throw new Error(`Failed to create thread: ${error.message}`);
+    console.error('Error creating thread:', {
+      error: error.message,
+      userId: params.userId,
+      stack: error.stack
+    });
+    
+    return {
+      success: false,
+      error: `Failed to create thread: ${error.message}`
+    };
   }
 }
 
@@ -283,6 +303,22 @@ export async function shareThread(threadId: string) {
   } catch (error: any) {
     throw new Error(`Failed to share thread: ${error.message}`);
   }
+}
+
+/**
+ * Verify if a user exists in the database
+ * @param userId The ID of the user to verify
+ * @returns Boolean indicating whether the user exists
+ */
+async function verifyUserExists(userId: string) {
+  const user = await User.findOne({ id: userId });
+  if (!user) {
+    const allUsers = await User.find({}, 'id name');
+    console.log('All users:', allUsers);
+    console.log('Searching for userId:', userId);
+    return false;
+  }
+  return true;
 }
 
 // Add any other thread-related functions here

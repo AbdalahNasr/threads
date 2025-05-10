@@ -1,7 +1,7 @@
 import mongoose from "mongoose"
 
 const userSchema = new mongoose.Schema({
-    id:{type:String,required:true},
+    id:{type:String,required:true,unique:true}, // This should match the Clerk user ID
     username:{type:String,required:true,unique:true},
     name:{type:String,required:true},
     image:String,

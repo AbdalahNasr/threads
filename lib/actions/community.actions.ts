@@ -337,8 +337,11 @@ export async function removeMemberFromCommunity(communityId: string, userId: str
  * Create a new community
  */
 export async function createCommunity(params: CommunityCreationParams): Promise<CommunityOperationResult> {
+  const startTime = performance.now();
+
   try {
     await connectToDB();
+    const dbStartTime = performance.now();
 
     const { name, username, bio, image, isPrivate, creatorId, clerkId } = params;
 
@@ -371,8 +374,9 @@ export async function createCommunity(params: CommunityCreationParams): Promise<
 
     // Save the community to the database
     const savedCommunity = await newCommunity.save();
+    const dbEndTime = performance.now();
 
-    // Add the community to the creator's communities if that field exists
+    // Add the community to the creator's communities
     if (user.communities) {
       user.communities.push(savedCommunity._id);
       await user.save();
@@ -380,7 +384,15 @@ export async function createCommunity(params: CommunityCreationParams): Promise<
 
     // Revalidate community-related paths
     revalidatePath('/communities');
+
+    const totalTime = performance.now() - startTime;
     
+    console.log({
+      totalOperationTime: `${totalTime.toFixed(2)}ms`,
+      dbOperationTime: `${(dbEndTime - dbStartTime).toFixed(2)}ms`,
+      stateUpdateTime: `${(performance.now() - dbEndTime).toFixed(2)}ms`
+    });
+
     toast({
       title: "Success",
       description: "Community created successfully!",
@@ -390,7 +402,12 @@ export async function createCommunity(params: CommunityCreationParams): Promise<
     return {
       success: true,
       message: "Community created successfully",
-      community: JSON.parse(JSON.stringify(savedCommunity))
+      community: JSON.parse(JSON.stringify(savedCommunity)),
+      timing: {
+        total: totalTime,
+        db: dbEndTime - dbStartTime,
+        stateUpdate: performance.now() - dbEndTime
+      }
     };
   } catch (error: any) {
     console.error("Error creating community:", error);
@@ -403,6 +420,34 @@ export async function createCommunity(params: CommunityCreationParams): Promise<
       success: false,
       error: error.message || "Failed to create community"
     };
+  }
+}
+
+/**
+ * Create a new community with performance tracking
+ */
+export async function createCommunityWithPerformance(data: CreateCommunityParams) {
+  const startTime = performance.now();
+  
+  try {
+    connectToDB();
+    
+    const dbStartTime = performance.now();
+    const createdCommunity = await Community.create(data);
+    const dbEndTime = performance.now();
+    
+    const totalTime = performance.now() - startTime;
+    
+    console.log({
+      totalTime: `${totalTime.toFixed(2)}ms`,
+      dbTime: `${(dbEndTime - dbStartTime).toFixed(2)}ms`,
+      stateUpdateTime: `${(performance.now() - dbEndTime).toFixed(2)}ms`
+    });
+
+    return createdCommunity;
+  } catch (error) {
+    console.error("Error creating community:", error);
+    throw error;
   }
 }
 
