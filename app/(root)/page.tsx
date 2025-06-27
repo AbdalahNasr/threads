@@ -1,4 +1,5 @@
-import { currentUser } from "@clerk/nextjs";
+import { getAuth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import CommunityCard from "@/components/cards/CommunityCard";
@@ -20,18 +21,17 @@ interface Community {
   members: any[];
 }
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | undefined };
-}) {
-  const user = await currentUser();
-  if (!user) return redirect("/sign-in");
+export default async function Home(
+  { searchParams }: { searchParams: { [key: string]: string | undefined } }
+) {
+  const { userId } = getAuth(headers());
+  if (!userId) return redirect("/sign-in");
 
-  const userInfo = await fetchUser(user.id);
+  const userInfo = await fetchUser(userId);
   if (!userInfo?.onboarded) redirect("/onboarding");
 
   // Fetch posts
+  // Default to page 1 if not provided in searchParams
   const result = await fetchPosts(
     searchParams.page ? +searchParams.page : 1,
     30
@@ -40,7 +40,7 @@ export default async function Home({
   // Fetch communities with error handling
   let suggestedCommunities: Community[] = [];
   try {
-    suggestedCommunities = await fetchSuggestedCommunities(user.id, 3);
+    suggestedCommunities = await fetchSuggestedCommunities(userId, 3);
   } catch (error) {
     console.error("Error fetching suggested communities:", error);
     // Continue with empty suggestions
